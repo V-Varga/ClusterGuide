@@ -1,12 +1,12 @@
-# OrthoBenchmark
+# ClusterGuide
 
-![OrthoBenchmark logo](./img/Logo__OrthoBenchmark.png)
+![ClusterGuide logo](./img/Logo__ClusterGuide.png)
 
-Logo created in BioRender. Varga, V. (2025) https://BioRender.com/vy1s18v
+Logo created in BioRender. Varga, V. (2026) https://BioRender.com/ghl3gq8
 
 Author: Vi Varga
 
-Last Update Date: 26.09.2025
+Last Update Date: 29.07.2026
 
 
 ## Description
@@ -16,10 +16,12 @@ A Python- and R-based toolbox for benchmarking orthologous clustering programs.
 
 ## Usage Instructions
 
-The OrthoBenchmark toolbox should be utilized from the command line, ideally in a terminal with either the `conda` or `mamba` package manager installed. The scripts provided in the toolbox should be used in the following manner:
+_Note that a Snakemake version of this toolbox is in development for ease of use._
+
+The ClusterGuide toolbox should be utilized from the command line, ideally in a terminal with either the `conda` or `mamba` package manager installed. The scripts provided in the toolbox should be used in the following manner:
 
 1. Run orthologous clustering using desired settings of four programs of interest.
-2. Create a `conda`/`mamba` environment from the `env-orthobenchmark.yml` file located in the `Environment/` directory. All R and Python modules necessary to run the scripts included in this toolbox are included in the file.
+2. Create a `conda`/`mamba` environment from the `env-clusterguide.yml` file located in the `Environment/` directory. All R and Python modules necessary to run the scripts included in this toolbox are included in the file.
 3. Parse orthologous clustering results with a user-modified version of the `ortho_results_parser.py` script. As it stands, this script can be used to parse the results of CD-Hit, Diamond, MMseqs2 or USEARCH. The user should adapt it as needed to the format of the orthologous clustering results output by their programs of interest. Modifications to this file will not be tracked by git, but modifications to the identical `ortho_results_parser__EXAMPLE.py` script will. [^1]
 4. Create an orthology database with the `create_ortho_db.py` script, which consolidates the data from the parsed orthologous clustering results into one large database.
 5. Gather summary statistics from the clustering database with the `og_stats_benchmark.py` and `og_clust_counts.py` scripts.
