@@ -16,6 +16,8 @@ A Python- and R-based toolbox for benchmarking orthologous clustering programs.
 
 ## Usage Instructions
 
+_Note that a Snakemake version of this toolbox is in development for ease of use._
+
 The ClusterGuide toolbox should be utilized from the command line, ideally in a terminal with either the `conda` or `mamba` package manager installed. The scripts provided in the toolbox should be used in the following manner:
 
 1. Run orthologous clustering using desired settings of four programs of interest.
