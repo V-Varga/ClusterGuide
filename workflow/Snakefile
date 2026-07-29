@@ -1,0 +1,222 @@
+##############################################
+# ClusterGuide Snakemake workflow
+#
+# Author: Vi Varga
+#
+# Last update: 29.07.2026
+#
+# This workflow assumes that protein
+# clustering results have already been parsed
+# into the standardized ClusterGuide format.
+##############################################
+
+from pathlib import Path
+
+# absolute path to Snakefile
+snakemake_dir = Path(workflow.snakefile).parent.resolve()
+
+# load configuration
+configfile: snakemake_dir.parent / "config/config.yaml"
+
+
+##############################################
+# Final targets
+##############################################
+
+rule all:
+    input:
+        config["summary_stats_output"],
+        config["cluster_counts_output"],
+        config["desc_stats_plot"],
+        config["significance_output"],
+        config["membership_json"],
+        config["membership_plot"]
+
+
+##############################################
+# Build combined orthology database
+##############################################
+
+rule create_database:
+    input:
+        config["parsed_databases"]
+    output:
+        config["combined_database"]
+    log:
+        "logs/create_database.log"
+    conda:
+        "workflow/envs/env-clusterguide.yml"
+    shell:
+        """
+        python workflow/scripts/create_ortho_db.py {input} \
+            > {log} 2>&1
+        """
+
+
+##############################################
+# Summary statistics
+##############################################
+
+rule summary_statistics:
+    input:
+        config["combined_database"]
+    output:
+        config["summary_stats_output"]
+    log:
+        "logs/summary_statistics.log"
+    conda:
+        "workflow/envs/env-clusterguide.yml"
+    params:
+        outbase=config["summary_stats_basename"]
+    shell:
+        """
+        python workflow/scripts/og_stats_benchmark.py \
+            {input} \
+            -NAME {params.outbase} \
+            > {log} 2>&1
+        """
+
+
+##############################################
+# Cluster counts
+##############################################
+
+rule cluster_counts:
+    input:
+        config["combined_database"]
+    output:
+        config["cluster_counts_output"]
+    log:
+        "logs/cluster_counts.log"
+    conda:
+        "workflow/envs/env-clusterguide.yml"
+    shell:
+        """
+        python workflow/scripts/og_clust_counts.py \
+            {input} \
+            > {log} 2>&1
+        """
+
+
+##############################################
+# Descriptive statistics plots
+##############################################
+
+rule descriptive_plots:
+    input:
+        stats=config["summary_stats_output"],
+        counts=config["cluster_counts_output"]
+    output:
+        config["desc_stats_plot"]
+    log:
+        "logs/descriptive_plots.log"
+    conda:
+        "workflow/envs/env-clusterguide.yml"
+    params:
+        dataset=config["dataset_id"],
+        remove=config["removable_string"]
+    shell:
+        """
+        Rscript workflow/scripts/visualize_desc_stats.R \
+            {input.stats} \
+            {input.counts} \
+            {params.dataset} \
+            {params.remove} \
+            > {log} 2>&1
+        """
+
+
+##############################################
+# Anderson-Darling testing
+##############################################
+
+rule significance_testing:
+    input:
+        config["cluster_counts_output"]
+    output:
+        config["significance_output"]
+    log:
+        "logs/significance_testing.log"
+    conda:
+        "workflow/envs/env-clusterguide.yml"
+    params:
+        substring=config["column_substring"]
+    shell:
+        """
+        Rscript workflow/scripts/clust_size_signif.R \
+            {input} \
+            {params.substring} \
+            > {log} 2>&1
+        """
+
+
+##############################################
+# Cluster membership overlap
+##############################################
+
+rule membership_testing:
+    input:
+        config["combined_database"]
+    output:
+        config["membership_json"]
+    log:
+        "logs/membership_testing.log"
+    conda:
+        "workflow/envs/env-clusterguide.yml"
+    params:
+        identifier=config["membership_identifier"],
+        percent=config["membership_percent"],
+        outbase=config["membership_outbase"]
+    shell:
+        """
+        python workflow/scripts/og_membership_test.py \
+            -a \
+            -i {params.identifier} \
+            -p {params.percent} \
+            -o {params.outbase} \
+            -d {input} \
+            > {log} 2>&1
+        """
+
+
+##############################################
+# Heatmap visualization
+##############################################
+
+rule overlap_plot:
+    input:
+        config["membership_json"]
+    output:
+        config["membership_plot"]
+    log:
+        "logs/overlap_plot.log"
+    conda:
+        "workflow/envs/env-clusterguide.yml"
+    params:
+        dataset=config["dataset_id"],
+        outbase=config["membership_plot_basename"]
+    shell:
+        """
+        Rscript workflow/scripts/visualize_cluster_overlap.R \
+            {input} \
+            {params.outbase} \
+            {params.dataset} \
+            > {log} 2>&1
+        """
+
+
+##############################################
+# Completion notification
+##############################################
+
+EMAIL = str(config["user_email"])
+
+onsuccess:
+    print("ClusterGuide workflow completed successfully.")
+    if EMAIL != "NO_EMAIL":
+        shell("mail -s 'ClusterGuide workflow completed successfully.' {EMAIL} < {log}")
+
+onerror:
+    print("ClusterGuide workflow terminated due to an error.")
+    if EMAIL != "NO_EMAIL":
+        shell("mail -s 'ClusterGuide workflow terminated with an error.' {EMAIL} < {log}")
