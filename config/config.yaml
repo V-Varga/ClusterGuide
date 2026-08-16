@@ -10,56 +10,94 @@
 # ------------------------------------------------------------------
 
 parsed_databases:
-  - data/CDHIT_parsed.txt
-  - data/MMseqs2_parsed.txt
-  - data/Diamond_parsed.txt
-  - data/USEARCH_parsed.txt
+  - data/CD-HIT_Pa_90_200k_parsed.txt
+  - data/MMseqs2_Pa_90_200k_parsed.txt
+  - data/Diamond_Pa_90_200k_parsed.txt
+  - data/USEARCH_Pa_90_200k_parsed.txt
 
+parsed_json_databases:
+  - data/CD-HIT_Pa_90_200k_parsed.json
+  - data/MMseqs2_Pa_90_200k_parsed.json
+  - data/Diamond_Pa_90_200k_parsed.json
+  - data/USEARCH_Pa_90_200k_parsed.json
 
 # ------------------------------------------------------------------
 # Dataset information
 # ------------------------------------------------------------------
 
-dataset_id: Human_Gut
+dataset_id: Size_200k
 
 # Remove everything before this substring when producing plots
-removable_string: HumanGut
+removable_string: Pa
 
-column_substring: ""
-
+# Use "NA" to perform all-against-all Anderson-Darling comparisons
+column_substring: NA
 
 # ------------------------------------------------------------------
 # Output locations
 # ------------------------------------------------------------------
 
-combined_database: results/orthology_database.pkl
+combined_database: results/Orthology_Comparison_DB.txt
 
 summary_stats_basename: results/statistics/summary
-summary_stats_output: results/statistics/summary_stats.tsv
+summary_stats_output: results/statistics/summary__og_stats.txt
 
-cluster_counts_output: results/statistics/cluster_counts.tsv
+cluster_counts_output: results/statistics/Ortho_Comparison_CountsClean.txt
 
-desc_stats_plot: results/figures/descriptive_statistics.pdf
+desc_stats_plot: results/statistics/summary__Visualized.pdf
 
-significance_output: results/statistics/anderson_darling.tsv
-
+significance_output: results/statistics/Ortho_Comparison_CountsClean__AndersonDarling.txt
 
 # ------------------------------------------------------------------
 # Membership overlap analysis
 # ------------------------------------------------------------------
 
-membership_identifier: HumanGut
+membership_identifier: 90
 
-membership_percent: 0.5
+# Membership overlap threshold percentage
+membership_percent: 50
 
-membership_outbase: results/overlap/overlap_scores
+# Output basename
+membership_output_basename: Pa_90_200k
 
-membership_json: results/overlap/og_score_dict_HumanGut.json
+# Intermediate JSON produced by og_membership_test.py
+membership_json: results/overlap/og_score_dict_90.json
 
-membership_plot_basename: results/figures/cluster_overlap
+# Final overlap score output
+membership_output: results/overlap/Pa_90_200k__50.txt
 
-membership_plot: results/figures/cluster_overlap.pdf
+# ------------------------------------------------------------------
+# Membership overlap run mode
+#
+# Choose exactly one:
+#
+#   run_all: true
+#       Run the complete analysis using -a.
+#
+#   run_all: false
+#       Resume from a checkpoint using -c and -j.
+# ------------------------------------------------------------------
 
+membership_run_all: true
+
+# Checkpoint number to resume from.
+# Valid values are 2, 3, 4, or 5.
+# Ignored when membership_run_all is true.
+membership_checkpoint: 2
+
+# JSON file produced at the previous checkpoint.
+# Required when membership_run_all is false.
+membership_checkpoint_json: ""
+
+# Names of the four clustering programs.
+membership_program_names:
+  - CD-HIT
+  - MMseqs2
+  - Diamond
+  - USEARCH
+
+# Final heatmap
+membership_plot: results/figures/cluster_overlap__Visualized.pdf
 
 # ------------------------------------------------------------------
 # Notifications
