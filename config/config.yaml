@@ -98,9 +98,3 @@ membership_program_names:
 
 # Final heatmap
 membership_plot: results/figures/cluster_overlap__Visualized.pdf
-
-# ------------------------------------------------------------------
-# Notifications
-# ------------------------------------------------------------------
-
-user_email: NO_EMAIL
