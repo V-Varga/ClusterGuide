@@ -1,5 +1,6 @@
 ortho_results_parser.py
 .snakemake/
+.cache/
 workflow/containers/
 data/
 results/
