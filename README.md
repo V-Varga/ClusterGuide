@@ -2,94 +2,237 @@
 
 ![ClusterGuide logo](./img/Logo__ClusterGuide.png)
 
-Logo created in BioRender. Varga, V. (2026) https://BioRender.com/ghl3gq8
+_A Snakemake Pipeline for Benchmarking Sequence Clustering Programs_
 
 Author: Vi Varga
 
-Last Update Date: 29.07.2026
+Current version: 2.0.0
+
+Last Major Update: 2026.08.17
 
 
-## Description
+## Introduction
 
-A Python- and R-based toolbox for benchmarking orthologous clustering programs.
+ClusterGuide is a Python- and R-based toolbox for benchmarking sequence clustering programs.
+
+The workflow consolidates clustering results from multiple programs, calculates descriptive statistics and cluster-size distributions, performs statistical testing of cluster-size differences, and evaluates the degree of overlap in cluster membership between programs.
+
+ClusterGuide is designed to be flexible with respect to the sequence clustering programs being benchmarked. Because there is no standardized output format shared by sequence clustering programs, parsing of program-specific output files remains a user-modified preprocessing step.
 
 
-## Usage Instructions
+## Pipeline structure
 
-_Note that a Snakemake version of this toolbox is in development for ease of use._
+The ClusterGuide Snakemake pipeline performs the following steps:
 
-The ClusterGuide toolbox should be utilized from the command line, ideally in a terminal with either the `conda` or `mamba` package manager installed. The scripts provided in the toolbox should be used in the following manner:
+Once the clustering results have been parsed, the ClusterGuide Snakemake pipeline performs the following steps:
 
-1. Run orthologous clustering using desired settings of four programs of interest.
-2. Create a `conda`/`mamba` environment from the `env-clusterguide.yml` file located in the `Environment/` directory. All R and Python modules necessary to run the scripts included in this toolbox are included in the file.
-3. Parse orthologous clustering results with a user-modified version of the `ortho_results_parser.py` script. As it stands, this script can be used to parse the results of CD-Hit, Diamond, MMseqs2 or USEARCH. The user should adapt it as needed to the format of the orthologous clustering results output by their programs of interest. Modifications to this file will not be tracked by git, but modifications to the identical `ortho_results_parser__EXAMPLE.py` script will. [^1]
-4. Create an orthology database with the `create_ortho_db.py` script, which consolidates the data from the parsed orthologous clustering results into one large database.
-5. Gather summary statistics from the clustering database with the `og_stats_benchmark.py` and `og_clust_counts.py` scripts.
-6. Visualize descriptive statistics with the `visualize_desc_stats.R` script. This script produces barplots, violin plots and boxplots. If the user wishes to produce scatterplots rather than barplots, the `visualize_desc_stats-scatter.R` script is also included.
-7. Test the significance of cluster size differences using the Anderson-Darling test with the `clust_size_signif.R` script.
-8. Perform the cluster membership overlap testing with the `og_membership_test.py` script.
-9. Visualize the results of the cluster membership overlap testing with the `visualize_cluster_overlap.R` script.
+1. Parsed clustering results are combined into a single database.
+2. Summary statistics are calculated for the clustering results.
+3. Cluster counts and cluster-size distributions are calculated.
+4. Descriptive statistics are visualized.
+5. Differences in cluster-size distributions are tested using the Anderson-Darling test.
+6. Cluster membership overlap between programs is calculated.
+7. Cluster membership overlap is visualized as a heatmap.
 
-All of the above mentioned scripts are located in the `Scripts/` directory. Example usage for each script is provided below, but please see the scripts themselves for more specific input and usage instructions.
+The workflow can be summarized as follows:
+
+```mermaid
+flowchart TD
+    A[Parsed sequence clustering results] --> B[Combine clustering results]
+    B --> C[Calculate summary statistics]
+    B --> D[Calculate cluster counts and size distributions]
+    C --> E[Visualize descriptive statistics]
+    D --> E
+    D --> F[Anderson-Darling testing]
+    A --> G[Calculate cluster membership overlap]
+    G --> H[Visualize cluster membership overlap]
+```
+
+The parsing step is intentionally separate from the Snakemake workflow because sequence clustering programs do not use a standardized output format. An example parser supporting CD-HIT, Diamond, MMseqs2 and USEARCH is provided, but users should modify the parser as necessary for their programs of interest.
+
+
+## Dependencies
+
+The primary dependencies of the ClusterGuide workflow are:
+
+ - Snakemake
+ - Apptainer
+
+The programs used by the workflow are installed in an Apptainer container. The container is generated from the `conda` environment specification included in the repository.
+
+A Conda or Mamba installation is also recommended for creating an environment for the initial data pre-processing results parsing step.
+
+
+## Setting up ClusterGuide
+
+Clone the ClusterGuide repository, then work from the main `ClusterGuide/` directory.
+
+### Input and output structure
+
+A typical ClusterGuide working directory has the following structure:
+
+```
+├── LICENSE
+├── README.md
+├── config
+│   └── config.yaml
+├── data
+│   ├── {PARSED_DATABASE_1}
+│   ├── {PARSED_DATABASE_2}
+│   ├── {PARSED_DATABASE_3}
+│   └── {PARSED_DATABASE_4}
+├── img
+│   └── Logo__ClusterGuide.png
+└── workflow
+    ├── containers
+    │   └── env-clusterguide.sif
+    ├── envs
+    │   └── env-clusterguide.yml
+    ├── scripts
+    └── Snakefile
+```
+
+Results generated by the workflow are written to the `results/` directory. Logs generated by Snakemake and the membership-overlap analysis are written to the `logs/` directory.
+
+The exact output paths are controlled by `config/config.yaml`.
+
+Create the directories used for input and output files:
+
+```bash
+mkdir data/
+mkdir results/
+```
+
+### Building the Apptainer container
+
+The ClusterGuide workflow uses an Apptainer container to provide the Python and R dependencies required by the pipeline.
+
+From the main `ClusterGuide/` directory, build the container as follows:
+
+```bash
+cd workflow/containers
+
+apptainer build \
+    --build-arg ENV_FILE=../envs/env-clusterguide.yml \
+    env-clusterguide.sif \
+    ../scripts/conda_environment_args_ubuntu.def
+
+cd ../..
+```
+
+The resulting container should be located at: `workflow/containers/env-clusterguide.sif`
+
+
+### Data pre-processing: Parsing existing sequence clustering results
+
+The parsing step is not part of the Snakemake workflow. If you need to parse raw clustering-program output, you can create a Conda environment containing the dependencies required by the example parser:
+
+```bash
+conda env create --file workflow/envs/env-clusterguide.yml
+conda activate env-clusterguide
+```
+
+The example parser currently supports:
+ - CD-HIT
+ - Diamond
+ - MMseqs2
+ - USEARCH
+
+The `ortho_results_parser.py` parser should be modified as necessary to accommodate the output format of the clustering programs being benchmarked.
+
+The parsing script is written with `argparse`, and can be used like so: 
 
 ```bash
 # parsing program results
 python ortho_results_parser.py [-h] -i INPUT_FILE [-c] [-d] [-m] [-u] [-o OUT_NAME] [-v]
-# where -c, -d, -m & -u specify which orthologous clustering program's results should be parsed
+# where -c, -d, -m & -u specify which sequence clustering program's results should be parsed
 # CD-HIT, Diamond, MMseqs2 or USEARCH, respectively
 # -o allows the user to specify an output file basename
-
-# database creation
-python create_ortho_db.py input_db1 [input_db2 input_db3...]
-# note that the number of input databases is not limited
-# the databases should be in the structure produced by the ortho_results_parser.py script
-
-# statistics collection
-python og_stats_benchmark.py input_dict [input_dict2 input_dict3 ...] [-NAME out_base]
-# note that the number of input databases is not limited
-# the databases should be in the structure produced by the ortho_results_parser.py script
-
-# boxplot data gathering by dataset size
-python og_clust_counts.py input_db
-# the database should be in the structure produced by the ortho_results_parser.py script
-
-# visualizing descriptive statistics
-Rscript visualize_desc_stats.R infile_stats infile_counts dataset_id removable_string
-# infile_stats is the results file output by the og_stats_benchmark.py script
-# infile_counts is the cleaned counts file output by the og_clust_counts.py script
-# dataset_id is a dataset identifier to be used in the figure titles 
-# (underscores should be used where the user wishes for spaces)
-# removable_string as a string which should be removed along with everything before
-# in order to allow the column names to be categorizable. The create_ortho_db.py 
-# script will create column headers in the format [PROGRAM_NAME]_[INPUT_BASENAME].
-# Use the [INPUT_BASENAME] for removable_string.
-
-# Anderson-Darling tests
-Rscript clust_size_signif.R infile_counts [col_substring]
-# infile_counts is the cleaned counts file output by the og_clust_counts.py script
-# col_substring is an optional argument specifying a substring that should be contained
-# in the column headers that the user wishes to perform the test on
-
-# cluster membership overlap
-python og_membership_test.py [-h] (-a | -c CHECKPOINT_NUM) [-j INPUT_JSON] [-i TEST_IDENTIFIER] [-p MEMBERSHIP_PERCENT] [-o OUT_NAME] [-d INPUT_FILES] [-n PROGRAM_NAMES] [-v]
-# can be run from the beginning with -a
-# or from a checkpoint with -c=NUMBER
-# please see -h for full prgoram documentation
-
-# visualizing cluster membership overlap
-Rscript visualize_cluster_overlap.R infile_json out_base dataset_id
-# infile_json is the og_score_dict_[IDENTIFIER].json file produced by the og_membership_test.py script
-# out_base is the intended basename for the output file heatmap plot files
-# dataset_id is a dataset identifier to be used in the figure titles 
-# (underscores should be used where the user wishes for spaces)
-
 ```
 
-[^1]: Note from author, Vi: I apologize for not being able to streamline the parsing step any further. However, since there is not standardized output file structure for orthologous clustering, it simply is not feasible. Results files vary with regard to pivoting, file extensions, delimiters, whether generated cluster are named or numbered (or neither), and more. If you are struggling to parse your specific output file, please reach out, and I will be happy to help!
+The resulting parsed files should be placed in the `data/` directory. The paths to these files should then be specified in `config/config.yaml`.
+
+### Parser limitations
+
+The parser is intentionally not integrated into the Snakemake workflow.
+
+There is currently no standardized output-file structure for sequence clustering programs. Results may differ with regard to:
+ - File format and extension
+ - Delimiters
+ - Whether clusters are named, numbered, or unnamed
+ - Whether proteins or clusters are represented by rows or columns
+ - The organization of cluster membership information
+ - Program-specific metadata
+
+Consequently, a universal parser is not practical. The included `ortho_results_parser.py` script should therefore be regarded as an example parser rather than a universally applicable component of the workflow.
+
+If the parser does not support the output format of a program you wish to benchmark, modify the parser accordingly. The example parser is included to provide a starting point for this process.
+
+
+## Configuration
+
+The primary workflow settings are contained in: `config/config.yaml`
+
+This file specifies, among other things:
+ - Input parsed clustering databases
+ - Output file locations
+ - Dataset identifiers
+ - Descriptive-statistics settings
+ - Cluster membership overlap settings
+ - Membership-overlap checkpoint information
+ - Names of the clustering programs being compared
+
+The membership-overlap settings include the run mode, checkpoint number and checkpoint JSON file where applicable.
+
+Please see the comments in `config/config.yaml` for details on the available options.
+
+
+## Running the Snakemake pipeline
+
+Before running the workflow, configure the `config/config.yaml` file with the appropriate input files and analysis settings.
+
+The pipeline should be run from the main `ClusterGuide/` directory.
+
+### Optional: Test the workflow with a dry run
+
+A dry run can be used to check that Snakemake has constructed the expected workflow without executing any jobs:
+
+```bash
+snakemake --use-singularity --cores 2 --dry-run
+```
+
+### Run the workflow
+
+To run the complete workflow:
+
+```bash
+snakemake --use-singularity --cores 2
+```
+
+The number of cores can be adjusted as appropriate for the system. As none of the steps are parallelized, it is sufficient to use 1-2 cores.
+
+The --use-singularity flag is required because the programs used by the workflow are provided through the Apptainer/Singularity container.
+
+
+### Cluster membership overlap testing
+
+The cluster membership overlap analysis has two modes of operation:
+ - Complete run: perform the analysis from the beginning using the parsed clustering databases.
+ - Checkpoint-based run: resume the analysis from a previously completed checkpoint.
+
+These options are controlled through `config/config.yaml`.
+
+The underlying `og_membership_test.py` script supports checkpoints 2, 3, 4 and 5. This allows a previously completed membership overlap analysis to be resumed without repeating earlier computational steps.
+
+The program names supplied in `config.yaml` should correspond to the clustering databases being compared.
 
 
 ## Publication & Citation
 
-This GitHub repository is associated with an upcoming manuscript. Citation to be added upon publication.
+This GitHub repository is associated with an upcoming manuscript. Citation information will be added upon publication.
 
-Note that scripts in the `PublicationSupplement/` directory are the scripts used to parse data and create figures for the manuscript.
+The scripts contained in the `PublicationSupplement/` directory are the scripts used to process data and generate figures for the associated manuscript.
+
+## License
+
+ClusterGuide is released under the MIT License. See the [LICENSE](./LICENSE) file for details.
