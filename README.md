@@ -1,12 +1,14 @@
 # ClusterGuide
 
+_A Snakemake Pipeline for Benchmarking Sequence Clustering Programs_
+
 ![ClusterGuide logo](./img/Logo__ClusterGuide.png)
+
+Logo created in BioRender. Varga, V. (2026) https://BioRender.com/ghl3gq8
 
 _A Snakemake Pipeline for Benchmarking Sequence Clustering Programs_
 
 Author: Vi Varga
-
-Current version: 2.0.0
 
 Last Major Update: 2026.08.17
 
