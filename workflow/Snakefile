@@ -1,0 +1,207 @@
+##############################################
+# ClusterGuide Snakemake workflow
+#
+# Author: Vi Varga
+#
+# Last update: 16.08.2026
+#
+# This workflow assumes that protein
+# clustering results have already been parsed
+# into the standardized ClusterGuide format.
+##############################################
+
+from pathlib import Path
+
+# absolute path to Snakefile
+snakemake_dir = Path(workflow.snakefile).parent.resolve()
+
+# load configuration
+configfile: snakemake_dir.parent / "config/config.yaml"
+
+
+##############################################
+# Final targets
+##############################################
+
+rule all:
+    input:
+        config["summary_stats_output"],
+        config["cluster_counts_output"],
+        config["desc_stats_plot"],
+        config["significance_output"],
+        config["membership_json"],
+        config["membership_plot"]
+
+
+##############################################
+# Build combined orthology database
+##############################################
+
+rule create_database:
+    input:
+        config["parsed_databases"]
+    output:
+        config["combined_database"]
+    singularity:
+        "workflow/containers/env-clusterguide.sif"
+    shell:
+        """
+        python workflow/scripts/create_ortho_db.py {input}
+        mv Orthology_Comparison_DB__*.txt {output}
+        """
+
+
+##############################################
+# Summary statistics
+##############################################
+
+rule summary_statistics:
+    input:
+        config["parsed_json_databases"]
+    output:
+        config["summary_stats_output"]
+    singularity:
+        "workflow/containers/env-clusterguide.sif"
+    params:
+        outbase=config["summary_stats_basename"]
+    shell:
+        """
+        mkdir -p $(dirname {output})
+        python workflow/scripts/og_stats_benchmark.py \
+            {input} \
+            -NAME {params.outbase}
+        """
+
+
+##############################################
+# Cluster counts
+##############################################
+
+rule cluster_counts:
+    input:
+        config["combined_database"]
+    output:
+        config["cluster_counts_output"]
+    singularity:
+        "workflow/containers/env-clusterguide.sif"
+    shell:
+        """
+        mkdir -p $(dirname {output})
+        python workflow/scripts/og_clust_counts.py \
+            {input}
+        mv Ortho_Comparison_CountsClean__*.txt {output}
+        mv Ortho_Comparison_Counts__*.txt results/statistics/
+        """
+
+
+##############################################
+# Descriptive statistics plots
+##############################################
+
+rule descriptive_plots:
+    input:
+        stats=config["summary_stats_output"],
+        counts=config["cluster_counts_output"]
+    output:
+        config["desc_stats_plot"]
+    singularity:
+        "workflow/containers/env-clusterguide.sif"
+    params:
+        dataset=config["dataset_id"],
+        removable=config["removable_string"]
+    shell:
+        """
+        Rscript workflow/scripts/visualize_desc_stats.R \
+            {input.stats} \
+            {input.counts} \
+            {params.dataset} \
+            {params.removable}
+        """
+
+
+##############################################
+# Anderson-Darling testing
+##############################################
+
+rule significance_testing:
+    input:
+        config["cluster_counts_output"]
+    output:
+        config["significance_output"]
+    singularity:
+        "workflow/containers/env-clusterguide.sif"
+    params:
+        substring=config["column_substring"]
+    shell:
+        """
+        cd results/statistics
+        Rscript ../../workflow/scripts/clust_size_signif.R \
+            Ortho_Comparison_CountsClean.txt \
+            {params.substring}
+        """
+
+
+##############################################
+# Cluster membership overlap
+##############################################
+
+rule membership_testing:
+    input:
+        config["parsed_json_databases"]
+    output:
+        membership_txt=config["membership_output"],
+        membership_json=config["membership_json"]
+    log:
+        "logs/membership_testing.log"
+    singularity:
+        "workflow/containers/env-clusterguide.sif"
+    params:
+        run_args=lambda wildcards: (
+            "-a"
+            if config["membership_run_all"]
+            else f"-c {config['membership_checkpoint']} "
+                 f"-j {config['membership_checkpoint_json']}"
+        ),
+        identifier=config["membership_identifier"],
+        percent=config["membership_percent"],
+        out_name=config["membership_output_basename"],
+        program_names=",".join(config["membership_program_names"]),
+        input_files=lambda wildcards, input: ",".join(
+            "../../" + f for f in input
+        )
+    shell:
+        """
+        cd results/overlap
+
+        python ../../workflow/scripts/og_membership_test.py \
+            {params.run_args} \
+            -i {params.identifier} \
+            -p {params.percent} \
+            -o {params.out_name} \
+            -d {params.input_files} \
+            -n {params.program_names} \
+            > ../../{log} 2>&1
+        """
+
+
+##############################################
+# Heatmap visualization
+##############################################
+
+rule overlap_plot:
+    input:
+        config["membership_json"]
+    output:
+        config["membership_plot"]
+    singularity:
+        "workflow/containers/env-clusterguide.sif"
+    params:
+        outbase="../../results/figures/cluster_overlap",
+        dataset=config["dataset_id"]
+    shell:
+        """
+        Rscript workflow/scripts/visualize_cluster_overlap.R \
+            {input} \
+            {params.outbase} \
+            {params.dataset}
+        """

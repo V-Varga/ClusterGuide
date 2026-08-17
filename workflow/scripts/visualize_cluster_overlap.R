@@ -85,12 +85,13 @@ out_base <- args[2]
 # get a category name to add to figure titles
 dataset_id <- args[3]
 
-
 # set the working directory to where the input file is located
 setwd(dirname(infile_json))
+
+# use only the filename after changing the working directory
+infile_json <- basename(infile_json)
 # clean up the dataset ID
 clean_dataset_id <- gsub("_", " ", dataset_id)
-
 # determine the output file name based on the user-provided basename
 outfile_basename <- paste(out_base, "Visualized", sep = "__")
 

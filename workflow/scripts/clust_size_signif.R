@@ -71,7 +71,11 @@ infile_name_counts <- basename(infile_counts)
 setwd(dirname(infile_name_counts))
 
 # determine the output file name based on the input file name
-outfile_basename <- paste((str_split(infile_name_counts, "__")[[1]][1]), "AndersonDarling", sep = "__")
+outfile_basename <- paste(
+  tools::file_path_sans_ext(str_split(infile_name_counts, "__")[[1]][1]),
+  "AndersonDarling",
+  sep = "__"
+)
 
 
 # see if there user has a subset of columns to test

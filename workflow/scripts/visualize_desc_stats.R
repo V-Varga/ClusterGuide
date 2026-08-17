@@ -123,9 +123,9 @@ stats_table$Program_Name <- gsub("_.*", "", stats_table$OG_Source)
 # create list of color IDs from Viridis
 # ref: https://www.thinkingondata.com/something-about-viridis-library/
 color_list <- viridis_pal()(5)
-# use first 3 colors from this list
+# use first 4 colors from this list
 # ref: https://stackoverflow.com/questions/12114439/remove-the-last-element-of-a-vector
-color_list <- head(color_list, -2)
+color_list <- head(color_list, -1)
 
 
 # Cluster number
