@@ -6,8 +6,6 @@ _A Snakemake Pipeline for Benchmarking Sequence Clustering Programs_
 
 Logo created in BioRender. Varga, V. (2026) https://BioRender.com/ghl3gq8
 
-_A Snakemake Pipeline for Benchmarking Sequence Clustering Programs_
-
 Author: Vi Varga
 
 Last Major Update: 2026.08.17
